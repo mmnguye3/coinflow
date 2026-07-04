@@ -301,6 +301,7 @@ export default function BuyCredits() {
               handleHeightChange={hPaypal}
               onApprove={({ paymentId }: { paymentId: string }) => { setPaymentId(paymentId); setStep('success'); }}
               onError={onWalletError}
+              {...({} as any)}
             />
           </div>
 
@@ -315,6 +316,7 @@ export default function BuyCredits() {
               handleHeightChange={hVenmo}
               onApprove={({ paymentId }: { paymentId: string }) => { setPaymentId(paymentId); setStep('success'); }}
               onError={onWalletError}
+              {...({} as any)}
             />
           </div>
 
