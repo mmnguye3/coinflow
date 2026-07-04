@@ -75,6 +75,7 @@ export default function BuyCredits() {
   const [googleH, setGoogleH] = useState(54);
   const [paypalH, setPaypalH] = useState(54);
   const [venmoH, setVenmoH] = useState(54);
+  const [paypalOverlayOpen, setPaypalOverlayOpen] = useState(false);
   const cardFormRef = useRef<CardFormRef>(null);
 
   const pack = PACKS[sel];
@@ -99,6 +100,8 @@ export default function BuyCredits() {
   const hPaypal = useCallback((h: string) => {
     const n = Number(h);
     if (n > 0) setPaypalH(n);
+    // PayPal grows its iframe substantially when the approval overlay opens
+    setPaypalOverlayOpen(n > 200);
   }, []);
   const hVenmo  = useCallback((h: string) => { const n = Number(h); if (n > 0) setVenmoH(n); }, []);
 
@@ -258,15 +261,19 @@ export default function BuyCredits() {
   // ── METHOD SELECTOR ──
   if (step === 'methods' && session) return (
     <div style={{ fontFamily: "'Chakra Petch',sans-serif", background: bg, color: text, minHeight: '100vh', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '28px 14px 60px' }}>
-      <div style={{ position: 'relative' }}>
-        <div
-          id="paypal-overlay"
-          style={{
-            position: 'absolute', inset: 0, zIndex: 50,
-            pointerEvents: 'none',
-          }}
-        />
-        <div style={cardStyle}>
+      {/* Full-screen backdrop PayPal fills while its approval overlay is open.
+          Must exist in the DOM at all times; pointerEvents toggles so it never
+          blocks the page when closed. */}
+      <div
+        id="paypal-overlay"
+        style={{
+          position: 'fixed', inset: 0, zIndex: 50,
+          pointerEvents: paypalOverlayOpen ? 'auto' : 'none',
+          background: paypalOverlayOpen ? 'rgba(5,5,7,.7)' : 'transparent',
+          transition: 'background .2s',
+        }}
+      />
+      <div style={cardStyle}>
         <button onClick={resetAll} style={{ background: 'none', border: 'none', color: muted, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 16 }}>← Cancel</button>
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <h2 style={{ fontSize: 17, letterSpacing: '.06em', textTransform: 'uppercase' }}>Select Payment</h2>
@@ -366,7 +373,6 @@ export default function BuyCredits() {
 
         {errMsg && <div style={{ color: red, fontSize: 12, fontWeight: 600, marginTop: 14 }}>{errMsg}</div>}
         {footer}
-      </div>
       </div>
     </div>
   );
