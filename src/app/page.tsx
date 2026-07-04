@@ -199,7 +199,7 @@ export default function BuyCredits() {
                 }}
               />
             </div>
-            <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#111' }}>
+            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#111' }}>
               <svg width="18" height="18" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#00D632"/><path d="M15.7 9.2c-.6-.55-1.5-.95-2.4-.95-.85 0-1.45.35-1.45.95 0 .55.55.8 1.55 1.05 1.75.45 3.05 1.05 3.05 2.75 0 1.6-1.25 2.7-3.1 2.9l-.25 1.2c-.05.2-.2.35-.4.35h-1.45c-.25 0-.45-.25-.4-.5l.25-1.25c-.95-.25-1.85-.7-2.5-1.3-.15-.15-.15-.4 0-.55l.85-.85c.15-.15.4-.15.55 0 .7.6 1.6 1 2.55 1 1 0 1.6-.4 1.6-1.05 0-.6-.5-.85-1.7-1.15-1.5-.4-2.85-1-2.85-2.65 0-1.55 1.2-2.6 2.95-2.8l.25-1.2c.05-.2.2-.35.4-.35h1.45c.25 0 .45.25.4.5l-.25 1.3c.8.25 1.55.65 2.1 1.1.2.15.2.4.05.55l-.8.85c-.15.15-.4.15-.55-.05z" fill="#fff"/></svg>
               Cash App Pay
             </div>
