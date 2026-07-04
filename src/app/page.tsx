@@ -283,6 +283,7 @@ export default function BuyCredits() {
           {/* Apple Pay — renders only in Safari/WebKit with Wallet available */}
           <div style={{ width: '100%', height: appleH, borderRadius: 12, overflow: 'hidden' }}>
             <CoinflowApplePayButton
+              key={session.sessionKey}
               env={ENV}
               sessionKey={session.sessionKey}
               merchantId={MERCHANT_ID}
@@ -298,6 +299,7 @@ export default function BuyCredits() {
           {/* Google Pay — color is REQUIRED by MobileWalletButtonProps */}
           <div style={{ width: '100%', height: googleH, borderRadius: 12, overflow: 'hidden' }}>
             <CoinflowGooglePayButton
+              key={session.sessionKey}
               env={ENV}
               sessionKey={session.sessionKey}
               merchantId={MERCHANT_ID}
@@ -313,6 +315,7 @@ export default function BuyCredits() {
           {/* PayPal — overlayId + onApprove are required */}
           <div style={{ width: '100%', height: paypalH, borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
             <CoinflowPayPalButton
+              key={session.sessionKey}
               env={ENV}
               sessionKey={session.sessionKey}
               merchantId={MERCHANT_ID}
@@ -329,6 +332,7 @@ export default function BuyCredits() {
           {/* Venmo — popup flow: no overlayId prop exists on this component */}
           <div style={{ width: '100%', height: venmoH, borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
             <CoinflowVenmoButton
+              key={session.sessionKey}
               env={ENV}
               sessionKey={session.sessionKey}
               merchantId={MERCHANT_ID}
