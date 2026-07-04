@@ -349,8 +349,7 @@ export default function BuyCredits() {
       <div style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 21, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase' }}>Buy Credits</h1>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.18em', textTransform: 'uppercase', color: muted, marginTop: 5 }}>Choose amount &amp; checkout</div>
+            <h1 style={{ fontSize: 21, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase' }}>Checkout</h1>
           </div>
           <button onClick={() => window.location.href = '/'} style={{ width: 38, height: 38, borderRadius: 12, background: row, border: `1px solid ${line}`, color: muted, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>✕</button>
         </div>
@@ -360,12 +359,10 @@ export default function BuyCredits() {
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.16em', textTransform: 'uppercase', color: muted, flex: 1 }}>Total Amount</div>
           <div style={{ fontSize: 19, fontWeight: 700 }}>{amountFmt}</div>
         </div>
-        <div style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '.18em', textTransform: 'uppercase', color: muted, margin: '0 2px 10px' }}>Select Amount</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
           {PACKS.map((p, i) => (
             <button key={i} onClick={() => setSel(i)} style={{ background: i === sel ? pbg : row, border: `1px solid ${i === sel ? purple : line}`, borderRadius: 16, padding: '16px 10px', textAlign: 'center', cursor: 'pointer', color: text, fontFamily: 'inherit', fontSize: 'inherit' }}>
-              <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-.02em' }}>{p.credits.toLocaleString()} <span style={{ color: purple }}>⬢</span></div>
-              <div style={{ fontSize: 12, color: i === sel ? purple : muted, marginTop: 4, fontWeight: 600 }}>${(p.cents / 100).toFixed(2)}</div>
+              <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-.02em' }}>${(p.cents / 100).toFixed(2)}</div>
               {p.tag && <div style={{ display: 'inline-block', marginTop: 8, fontSize: 9, fontWeight: 700, letterSpacing: '.1em', color: green, border: '1px solid rgba(45,212,160,.4)', padding: '3px 8px', borderRadius: 99 }}>{p.tag}</div>}
             </button>
           ))}
