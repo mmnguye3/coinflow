@@ -296,8 +296,7 @@ export default function BuyCredits() {
               sessionKey={session.sessionKey}
               merchantId={MERCHANT_ID}
               subtotal={{ cents: amountCents, currency: Currency.USD }}
-              email={email}
-              color="white"
+              email={email || 'player@test.com'}
               overlayId="paypal-overlay"
               handleHeightChange={hPaypal}
               onApprove={({ paymentId }: { paymentId: string }) => { setPaymentId(paymentId); setStep('success'); }}
@@ -312,8 +311,7 @@ export default function BuyCredits() {
               sessionKey={session.sessionKey}
               merchantId={MERCHANT_ID}
               subtotal={{ cents: amountCents, currency: Currency.USD }}
-              email={email}
-              color="white"
+              email={email || 'player@test.com'}
               handleHeightChange={hVenmo}
               onApprove={({ paymentId }: { paymentId: string }) => { setPaymentId(paymentId); setStep('success'); }}
               onError={onWalletError}
