@@ -258,7 +258,15 @@ export default function BuyCredits() {
   // ── METHOD SELECTOR ──
   if (step === 'methods' && session) return (
     <div style={{ fontFamily: "'Chakra Petch',sans-serif", background: bg, color: text, minHeight: '100vh', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '28px 14px 60px' }}>
-      <div style={cardStyle}>
+      <div style={{ position: 'relative' }}>
+        <div
+          id="paypal-overlay"
+          style={{
+            position: 'absolute', inset: 0, zIndex: 50,
+            pointerEvents: 'none',
+          }}
+        />
+        <div style={cardStyle}>
         <button onClick={resetAll} style={{ background: 'none', border: 'none', color: muted, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 16 }}>← Cancel</button>
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <h2 style={{ fontSize: 17, letterSpacing: '.06em', textTransform: 'uppercase' }}>Select Payment</h2>
@@ -315,6 +323,7 @@ export default function BuyCredits() {
               merchantId={MERCHANT_ID}
               subtotal={{ cents: amountCents, currency: Currency.USD }}
               email={email || 'player@test.com'}
+              overlayId="paypal-overlay"
               handleHeightChange={hPaypal}
               onApprove={onPayPalApprove}
               onError={onWalletError}
@@ -357,6 +366,7 @@ export default function BuyCredits() {
 
         {errMsg && <div style={{ color: red, fontSize: 12, fontWeight: 600, marginTop: 14 }}>{errMsg}</div>}
         {footer}
+      </div>
       </div>
     </div>
   );
