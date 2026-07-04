@@ -105,6 +105,15 @@ export default function BuyCredits() {
   }, []);
   const hVenmo  = useCallback((h: string) => { const n = Number(h); if (n > 0) setVenmoH(n); }, []);
 
+  const onPayPalApprove = useCallback(({ paymentId }: { paymentId: string }) => {
+    setPaymentId(paymentId);
+    setStep('success');
+  }, []);
+  const onVenmoApprove = useCallback(({ paymentId }: { paymentId: string }) => {
+    setPaymentId(paymentId);
+    setStep('success');
+  }, []);
+
   async function initCheckout() {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setErrMsg('Enter a valid email first.'); return; }
     setErrMsg(''); setPayStatus('loading');
@@ -323,7 +332,7 @@ export default function BuyCredits() {
               email={email || 'player@test.com'}
               overlayId="paypal-overlay"
               handleHeightChange={hPaypal}
-              onApprove={({ paymentId }: { paymentId: string }) => { setPaymentId(paymentId); setStep('success'); }}
+              onApprove={onPayPalApprove}
               onError={onWalletError}
               {...({} as any)}
             />
@@ -339,7 +348,7 @@ export default function BuyCredits() {
               subtotal={{ cents: amountCents, currency: Currency.USD }}
               email={email || 'player@test.com'}
               handleHeightChange={hVenmo}
-              onApprove={({ paymentId }: { paymentId: string }) => { setPaymentId(paymentId); setStep('success'); }}
+              onApprove={onVenmoApprove}
               onError={onWalletError}
               {...({} as any)}
             />
