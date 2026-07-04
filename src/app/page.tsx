@@ -39,7 +39,7 @@ const CARD_THEME = {
   fontSize: '14px', placeholderColor: '#9ca3af', showCardIcon: true,
 };
 
-async function apiPost(path: string, body: any, sessionKey: string): Promise<any> {
+async function apiPost(path: string, body: Record<string, unknown>, sessionKey: string): Promise<Record<string, any>> {
   const res = await fetch(`${API}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-coinflow-auth-session-key': sessionKey },
@@ -63,6 +63,7 @@ function baseBody(amountCents: number) {
 export default function BuyCredits() {
   const [sel, setSel] = useState(0);
   const [email, setEmail] = useState('');
+  const [cardName, setCardName] = useState('');
   const [step, setStep] = useState<Step>('start');
   const [errMsg, setErrMsg] = useState('');
   const [session, setSession] = useState<SessionData | null>(null);
@@ -70,54 +71,39 @@ export default function BuyCredits() {
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [cashAppLink, setCashAppLink] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  const [appleH, setAppleH] = useState(0);
-  const [googleH, setGoogleH] = useState(0);
-  const [paypalH, setPaypalH] = useState(0);
-  const [venmoH, setVenmoH] = useState(0);
+  const [appleH, setAppleH] = useState(54);
+  const [googleH, setGoogleH] = useState(54);
+  const [paypalH, setPaypalH] = useState(54);
+  const [venmoH, setVenmoH] = useState(54);
+  const [paypalOverlayOpen, setPaypalOverlayOpen] = useState(false);
   const cardFormRef = useRef<CardFormRef>(null);
-  const appleRef = useRef<HTMLDivElement>(null);
-  const googleRef = useRef<HTMLDivElement>(null);
 
   const pack = PACKS[sel];
   const amountCents = pack.cents;
   const amountFmt = `$${(amountCents / 100).toFixed(2)}`;
 
-  // Global message listener for Coinflow iframe height changes + success
-  useEffect(() => {
-    const handler = ({ data, origin }: MessageEvent) => {
-      if (!origin.includes('coinflow.cash')) return;
-      try {
-        const msg = typeof data === 'string' ? JSON.parse(data) : data;
-        if (msg.method === 'heightChange') {
-          const h = Number(msg.data);
-          if (h > 0) {
-            setAppleH(prev => Math.max(prev, h));
-            setGoogleH(prev => Math.max(prev, h));
-            setPaypalH(prev => Math.max(prev, h));
-            setVenmoH(prev => Math.max(prev, h));
-          }
-        }
-        const m = ((msg.method || msg.type || '').toString()).toLowerCase();
-        if (m.includes('success') || m.includes('complete')) {
-          if (msg.paymentId) setPaymentId(msg.paymentId);
-          setStep('success');
-        }
-      } catch {}
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
+  // Success + error callbacks shared by wallet buttons.
+  // SDK contract: onSuccess?: OnSuccessMethod, onError?: (message: string) => void
+  const onWalletSuccess = useCallback((...args: unknown[]) => {
+    const first = args[0] as any;
+    const pid = typeof first === 'string' ? first : first?.paymentId;
+    if (pid) setPaymentId(String(pid));
+    setStep('success');
+  }, []);
+  const onWalletError = useCallback((message: string) => {
+    setErrMsg(message || 'Payment failed');
   }, []);
 
-  const hApple = useCallback((h: string) => {
-    setAppleH(Number(h));
-    setTimeout(() => appleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  // Height handlers — SDK sends the rendered iframe height as a string
+  const hApple  = useCallback((h: string) => { const n = Number(h); if (n > 0) setAppleH(n); }, []);
+  const hGoogle = useCallback((h: string) => { const n = Number(h); if (n > 0) setGoogleH(n); }, []);
+  const hPaypal = useCallback((h: string) => {
+    const n = Number(h);
+    if (n > 0) setPaypalH(n);
+    // PayPal grows its iframe substantially when the approval overlay opens
+    setPaypalOverlayOpen(n > 200);
   }, []);
-  const hGoogle = useCallback((h: string) => {
-    setGoogleH(Number(h));
-    setTimeout(() => googleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
-  }, []);
-  const hPaypal = useCallback((h: string) => setPaypalH(Number(h)), []);
-  const hVenmo = useCallback((h: string) => setVenmoH(Number(h)), []);
+  const hVenmo  = useCallback((h: string) => { const n = Number(h); if (n > 0) setVenmoH(n); }, []);
 
   async function initCheckout() {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setErrMsg('Enter a valid email first.'); return; }
@@ -130,7 +116,7 @@ export default function BuyCredits() {
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`); }
       const data = await res.json();
       setSession(data); setStep('methods'); setPayStatus('idle');
-    } catch (err) { setErrMsg(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err) { setErrMsg(err instanceof Error ? err.message : 'Failed'); setPayStatus('idle'); }
   }
 
   async function handleCardPay() {
@@ -139,12 +125,15 @@ export default function BuyCredits() {
     try {
       const tokenResult: CardFormTokenResponse | undefined = await cardFormRef.current?.tokenize();
       if (!tokenResult?.token) throw new Error('Could not tokenize card.');
+      const nameParts = cardName.trim().split(/\s+/);
+      const firstName = nameParts[0] || 'Customer';
+      const lastName = nameParts.slice(1).join(' ') || firstName;
       const result = await apiPost(`/checkout/card/${MERCHANT_ID}`, {
         ...baseBody(amountCents), jwtToken: session.jwtToken,
-        card: { cardToken: tokenResult.token, expYear: tokenResult.expYear || '30', expMonth: tokenResult.expMonth || '12', email, firstName: 'John', lastName: 'Doe', country: 'US' },
+        card: { cardToken: tokenResult.token, expYear: tokenResult.expYear || '30', expMonth: tokenResult.expMonth || '12', email, firstName, lastName, country: 'US' },
       }, session.sessionKey);
       setPaymentId(result.paymentId); setStep('success');
-    } catch (err) { setErrMsg(err instanceof Error ? err.message : 'Card failed'); }
+    } catch (err) { setErrMsg(err instanceof Error ? err.message : 'Card failed'); setPayStatus('idle'); }
   }
 
   async function handleCashApp() {
@@ -153,14 +142,15 @@ export default function BuyCredits() {
     try {
       const result = await apiPost(`/checkout/cashapp/${MERCHANT_ID}`, { ...baseBody(amountCents), email }, session.sessionKey);
       setCashAppLink(result.cashAppLink); setPaymentId(result.paymentId); setExpiresAt(result.expiresAt || null); setStep('cashapp');
-    } catch (err) { setErrMsg(err instanceof Error ? err.message : 'Cash App failed'); }
+      setPayStatus('idle');
+    } catch (err) { setErrMsg(err instanceof Error ? err.message : 'Cash App failed'); setPayStatus('idle'); }
   }
 
   useEffect(() => {
     if (cashAppLink && /iPad|iPhone|iPod|Android/.test(navigator.userAgent)) window.location.href = cashAppLink;
   }, [cashAppLink]);
 
-  const resetAll = () => { setStep('start'); setSession(null); setPaymentId(null); setErrMsg(''); setCashAppLink(null); };
+  const resetAll = () => { setStep('start'); setSession(null); setPaymentId(null); setErrMsg(''); setCashAppLink(null); setPayStatus('idle'); };
   const back = () => { setStep('methods'); setErrMsg(''); setPayStatus('idle'); };
 
   // Styles
@@ -169,17 +159,17 @@ export default function BuyCredits() {
   const cardStyle: React.CSSProperties = { width: '100%', maxWidth: 440, background: card, border: `1px solid ${line}`, borderRadius: 26, padding: '26px 22px 24px', boxShadow: `0 0 60px rgba(168,85,247,.12), 0 24px 60px rgba(0,0,0,.6)` };
   const rowCss: React.CSSProperties = { background: row, border: `1px solid ${line}`, borderRadius: 16, padding: '14px 16px' };
   const btnBase: React.CSSProperties = { width: '100%', border: 'none', borderRadius: 16, cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: 'inherit', color: '#fff', letterSpacing: '.08em', textTransform: 'uppercase', background: `linear-gradient(135deg,${purple},#6d28d9)`, boxShadow: `0 8px 28px rgba(168,85,247,.3)`, padding: 17 };
-  const footer = <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: muted, marginTop: 18, lineHeight: '2' }}>🔒 <b style={{ color: green }}>Secure Checkout</b> · PCI · 3DS<br /><span style={{ opacity: 0.7 }}>Sandbox · Test card 4242 4242 4242 4242</span></div>;
+  const footer = <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: muted, marginTop: 18, lineHeight: '2' }}>🔒 <b style={{ color: green }}>Secure Checkout</b> · PCI · 3DS<br /><span style={{ opacity: 0.7 }}>Sandbox · Test card 4111 1111 1111 1111</span></div>;
 
   // ── SUCCESS ──
-  if (step === 'success' && paymentId) return (
+  if (step === 'success') return (
     <div style={{ fontFamily: "'Chakra Petch',sans-serif", background: bg, color: text, minHeight: '100vh', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '28px 14px 60px' }}>
       <div style={cardStyle}>
         <div style={{ textAlign: 'center', padding: '30px 10px' }}>
           <div style={{ fontSize: 44, marginBottom: 14 }}>✅</div>
           <h2 style={{ fontSize: 17, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Payment Complete</h2>
           <p style={{ fontSize: 12, color: muted, letterSpacing: '.04em', lineHeight: 1.7 }}>{amountFmt} processed.</p>
-          <div style={{ margin: '16px auto 0', maxWidth: 280, background: row, border: `1px solid ${line}`, borderRadius: 12, padding: '10px 14px', fontSize: 11, fontFamily: 'monospace', color: muted, wordBreak: 'break-all' }}>ID: {paymentId}</div>
+          {paymentId && <div style={{ margin: '16px auto 0', maxWidth: 280, background: row, border: `1px solid ${line}`, borderRadius: 12, padding: '10px 14px', fontSize: 11, fontFamily: 'monospace', color: muted, wordBreak: 'break-all' }}>ID: {paymentId}</div>}
           <button onClick={resetAll} style={{ ...btnBase, marginTop: 24 }}>New Purchase</button>
         </div>
         {footer}
@@ -217,6 +207,13 @@ export default function BuyCredits() {
           <h2 style={{ fontSize: 17, letterSpacing: '.06em', textTransform: 'uppercase' }}>Credit / Debit Card</h2>
           <p style={{ fontSize: 14, color: muted, marginTop: 4 }}>{amountFmt}</p>
         </div>
+        <input
+          value={cardName}
+          onChange={e => setCardName(e.target.value)}
+          placeholder="Name on card"
+          autoComplete="cc-name"
+          style={{ width: '100%', background: row, border: `1px solid ${line}`, borderRadius: 14, color: text, fontSize: 14, fontWeight: 600, padding: '14px 16px', outline: 'none', fontFamily: 'inherit', marginBottom: 12 }}
+        />
         <div style={{ background: '#fff', borderRadius: 16, padding: 16, boxShadow: '0 4px 20px rgba(0,0,0,.3)' }}>
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.16em', textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Card Information</div>
           <CoinflowCardForm ref={cardFormRef} merchantId={MERCHANT_ID} env={ENV} theme={CARD_THEME} />
@@ -234,6 +231,18 @@ export default function BuyCredits() {
   // ── METHOD SELECTOR ──
   if (step === 'methods' && session) return (
     <div style={{ fontFamily: "'Chakra Petch',sans-serif", background: bg, color: text, minHeight: '100vh', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '28px 14px 60px' }}>
+      {/* Full-screen backdrop PayPal fills while its approval overlay is open.
+          Must exist in the DOM at all times; pointerEvents toggles so it never
+          blocks the page when closed. */}
+      <div
+        id="paypal-overlay"
+        style={{
+          position: 'fixed', inset: 0, zIndex: 50,
+          pointerEvents: paypalOverlayOpen ? 'auto' : 'none',
+          background: paypalOverlayOpen ? 'rgba(5,5,7,.7)' : 'transparent',
+          transition: 'background .2s',
+        }}
+      />
       <div style={cardStyle}>
         <button onClick={resetAll} style={{ background: 'none', border: 'none', color: muted, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 16 }}>← Cancel</button>
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
@@ -250,64 +259,64 @@ export default function BuyCredits() {
             <span style={{ marginLeft: 'auto', color: muted, fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase' }}>Pay</span>
           </button>
 
-          {/* Apple Pay — per docs: height from handleHeightChange, subtotal+sessionKey */}
-          <div ref={appleRef} style={{ width: '100%', height: appleH > 0 ? `${appleH}px` : '50px', background: row, border: `1px solid ${line}`, borderRadius: 16 }}>
+          {/* Apple Pay — renders only in Safari/WebKit with Wallet available */}
+          <div style={{ width: '100%', height: appleH, borderRadius: 12, overflow: 'hidden' }}>
             <CoinflowApplePayButton
               env={ENV}
               sessionKey={session.sessionKey}
               merchantId={MERCHANT_ID}
-              handleHeightChange={hApple}
               subtotal={{ cents: amountCents, currency: Currency.USD }}
+              email={email}
               color="black"
-              {...({} as any)}
-              onError={(err: any) => { setErrMsg(typeof err === 'string' ? err : err?.message || 'Apple Pay failed'); }}
+              handleHeightChange={hApple}
+              onSuccess={onWalletSuccess}
+              onError={onWalletError}
             />
           </div>
 
-          {/* Google Pay */}
-          <div ref={googleRef} style={{ width: '100%', height: googleH > 0 ? `${googleH}px` : '50px', background: row, border: `1px solid ${line}`, borderRadius: 16 }}>
+          {/* Google Pay — color is REQUIRED by MobileWalletButtonProps */}
+          <div style={{ width: '100%', height: googleH, borderRadius: 12, overflow: 'hidden' }}>
             <CoinflowGooglePayButton
               env={ENV}
               sessionKey={session.sessionKey}
               merchantId={MERCHANT_ID}
-              handleHeightChange={hGoogle}
               subtotal={{ cents: amountCents, currency: Currency.USD }}
-              {...({} as any)}
-              onError={(err: any) => { setErrMsg(typeof err === 'string' ? err : err?.message || 'Google Pay failed'); }}
+              email={email}
+              color="black"
+              handleHeightChange={hGoogle}
+              onSuccess={onWalletSuccess}
+              onError={onWalletError}
             />
           </div>
 
-          {/* PayPal — per docs: overlayId, onApprove, handleHeightChange, email */}
-          <div style={{ width: '100%', borderRadius: 12, overflow: 'hidden', background: '#fff', height: paypalH > 0 ? `${paypalH}px` : '50px' }}>
-            <div id="paypal-overlay" />
+          {/* PayPal — overlayId + onApprove are required */}
+          <div style={{ width: '100%', height: paypalH, borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
             <CoinflowPayPalButton
               env={ENV}
-              merchantId={MERCHANT_ID}
               sessionKey={session.sessionKey}
+              merchantId={MERCHANT_ID}
               subtotal={{ cents: amountCents, currency: Currency.USD }}
               email={email}
+              color="white"
               overlayId="paypal-overlay"
               handleHeightChange={hPaypal}
-              {...({} as any)}
-              onApprove={({paymentId}: {paymentId: string}) => { setPaymentId(paymentId); setStep('success'); }}
-              onError={(err: any) => { setErrMsg(typeof err === 'string' ? err : err?.message || 'PayPal failed'); }}
+              onApprove={({ paymentId }: { paymentId: string }) => { setPaymentId(paymentId); setStep('success'); }}
+              onError={onWalletError}
             />
           </div>
 
-          {/* Venmo */}
-          <div style={{ width: '100%', borderRadius: 12, overflow: 'hidden', background: '#fff', height: venmoH > 0 ? `${venmoH}px` : '50px' }}>
-            <div id="venmo-overlay" />
+          {/* Venmo — popup flow: no overlayId prop exists on this component */}
+          <div style={{ width: '100%', height: venmoH, borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
             <CoinflowVenmoButton
               env={ENV}
-              merchantId={MERCHANT_ID}
               sessionKey={session.sessionKey}
+              merchantId={MERCHANT_ID}
               subtotal={{ cents: amountCents, currency: Currency.USD }}
               email={email}
-              overlayId="venmo-overlay"
+              color="white"
               handleHeightChange={hVenmo}
-              {...({} as any)}
-              onApprove={({paymentId}: {paymentId: string}) => { setPaymentId(paymentId); setStep('success'); }}
-              onError={(err: any) => { setErrMsg(typeof err === 'string' ? err : err?.message || 'Venmo failed'); }}
+              onApprove={({ paymentId }: { paymentId: string }) => { setPaymentId(paymentId); setStep('success'); }}
+              onError={onWalletError}
             />
           </div>
 
