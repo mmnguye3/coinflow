@@ -208,9 +208,7 @@ export default function BuyCredits() {
 
           {/* Right: Scan to Pay panel */}
           <div style={{ textAlign: 'center', minWidth: 180, flex: 1 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 16, margin: '0 auto 10px', background: pbg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>⚡️</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Game Credits · {amountFmt}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#111', margin: '8px 0 6px', letterSpacing: '-.02em' }}>Scan to Pay</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#111', margin: '0 0 6px', letterSpacing: '-.02em' }}>Scan to Pay</div>
             <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>Use <span style={{ textDecoration: 'underline', color: '#6b7280' }}>Cash App</span> or your phone's<br/>camera to scan the code.</div>
           </div>
         </div>
